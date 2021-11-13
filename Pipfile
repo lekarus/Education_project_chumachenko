@@ -8,6 +8,8 @@ sqlalchemy = "*"
 pytest = "*"
 flask = "*"
 pylint = "*"
+flask-migrate = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
