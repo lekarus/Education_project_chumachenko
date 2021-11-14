@@ -1,6 +1,14 @@
-from flask import Flask
+from database import *
+from flask_migrate import Migrate
+from database.Directors import Directors
+from database.Films import Films
+from database.Users import Users
+from database.Genres import Genres
+from database.Films_Directors import Films_Directors
+from database.Films_Genres import Films_Genres
 
-app = Flask(__name__)
+
+migrate = Migrate(app, db)
 
 
 @app.route("/")

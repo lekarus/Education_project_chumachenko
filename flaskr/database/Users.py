@@ -1,9 +1,10 @@
-from base import *
+from . import db
 
 
-class Users(Base):
+class Users(db.Model):
     __tablename__ = 'users'
-    user_id = Column(Integer, primary_key=True, nullable=False)
-    username = Column(String(32), unique=True, nullable=False)
-    password = Column(String(32), nullable=False)
-    films = relationship("Films", back_populates='user')
+    __table_args__ = {'extend_existing': True}
+    user_id = db.Column(db.Integer, primary_key=True, nullable=False)
+    username = db.Column(db.String(32), unique=True, nullable=False)
+    password = db.Column(db.String(32), nullable=False)
+    films = db.relationship("Films", back_populates='user')
