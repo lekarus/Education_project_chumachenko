@@ -6,10 +6,11 @@ name = "pypi"
 [packages]
 sqlalchemy = "*"
 pytest = "*"
-flask = "*"
 pylint = "*"
 flask-migrate = "*"
 psycopg2-binary = "*"
+flask-script = "*"
+flask = "==1.1.2"
 
 [dev-packages]
 
