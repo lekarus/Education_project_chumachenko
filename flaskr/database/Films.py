@@ -1,4 +1,4 @@
-from . import db
+from . import db, ma
 
 
 class Films(db.Model):
@@ -12,5 +12,13 @@ class Films(db.Model):
     poster = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     user = db.relationship("Users", back_populates='films')
-    films_genres = db.relationship("Films_Genres", back_populates='films')
-    films_directors = db.relationship("Films_Directors", back_populates='films')
+    films_genres = db.relationship("FilmsGenres", back_populates='films')
+    films_directors = db.relationship("FilmsDirectors", back_populates='films')
+
+
+class FilmsSchema(ma.Schema):
+    class Meta:
+        fields = ['film_title', 'release_date', 'film_desc', 'poster', 'rating']
+
+
+films_schema = FilmsSchema(many=True)

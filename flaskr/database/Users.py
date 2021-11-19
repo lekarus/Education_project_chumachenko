@@ -1,4 +1,4 @@
-from . import db
+from . import db, ma
 
 
 class Users(db.Model):
@@ -9,3 +9,11 @@ class Users(db.Model):
     password = db.Column(db.String(32), nullable=False)
     isAdmin = db.Column(db.Boolean, nullable=False)
     films = db.relationship("Films", back_populates='user')
+
+
+class UsersSchema(ma.Schema):
+    class Meta:
+        fields = ['username']
+
+
+users_schema = UsersSchema(many=True)
