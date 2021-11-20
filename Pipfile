@@ -11,6 +11,8 @@ flask-migrate = "*"
 psycopg2-binary = "*"
 flask-script = "*"
 flask = "==1.1.2"
+flask-restx = "*"
+flask-marshmallow = "*"
 
 [dev-packages]
 

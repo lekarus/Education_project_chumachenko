@@ -1,4 +1,4 @@
-from . import db
+from . import db, ma
 
 
 class Directors(db.Model):
@@ -7,4 +7,12 @@ class Directors(db.Model):
     director_id = db.Column(db.Integer, primary_key=True, nullable=False)
     first_name = db.Column(db.String(255), nullable=False)
     last_name = db.Column(db.String(255), nullable=False)
-    films_directors = db.relationship("Films_Directors", back_populates='directors')
+    films_directors = db.relationship("FilmsDirectors", back_populates='directors')
+
+
+class DirectorsSchema(ma.Schema):
+    class Meta:
+        fields = ['first_name', 'last_name']
+
+
+directors_schema = DirectorsSchema(many=True)
