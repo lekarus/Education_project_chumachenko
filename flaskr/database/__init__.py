@@ -8,6 +8,7 @@ app = Flask(__name__)
 app.secret_key = 'my secret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@0.0.0.0:5432/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JSON_SORT_KEYS'] = False
 
 db = SQLAlchemy()
 db.init_app(app)

@@ -1,10 +1,9 @@
-import flask_login
 from flask import jsonify, request
 from flask_login import login_user, login_required, current_user, logout_user
 from flask_migrate import Migrate
 from flask_restx import Api, Resource
 
-from database import *
+from database import app, db
 from database.Directors import Directors, directors_schema
 from database.Films import Films, films_schema
 from database.Films_Directors import FilmsDirectors, films_directors_schema
@@ -16,19 +15,19 @@ api = Api(app)
 migrate = Migrate(app, db)
 
 
-@api.route('/user/<id>')
+@api.route('/user/<user_id>')
 @api.route('/users')
 class UsersAPI(Resource):
     @staticmethod
     @login_required
-    def get(id='all'):
+    def get(user_id='all'):
         if not current_user.isAdmin:
             return jsonify({'message': 'you don\'t have access'})
-        if id == 'all':
+        if user_id == 'all':
             all_users = Users.query.all()
             result = users_schema.dump(all_users)
             return jsonify(result)
-        user = Users.query.filter_by(user_id=id)
+        user = Users.query.filter_by(user_id=user_id)
         result = users_schema.dump(user)
         return jsonify(result)
 
@@ -83,16 +82,16 @@ class UsersAPI(Resource):
         return 200
 
 
-@api.route('/genre/<id>')
+@api.route('/genre/<genre_id>')
 @api.route('/genres')
 class GenreAPI(Resource):
     @staticmethod
-    def get(id='all'):
-        if id == 'all':
+    def get(genre_id='all'):
+        if genre_id == 'all':
             all_genres = Genres.query.all()
             result = genres_schema.dump(all_genres)
             return jsonify(result)
-        genre = Genres.query.filter_by(genre_id=id)
+        genre = Genres.query.filter_by(genre_id=genre_id)
         result = genres_schema.dump(genre)
         return jsonify(result)
 
@@ -136,16 +135,16 @@ class GenreAPI(Resource):
         return 200
 
 
-@api.route('/director/<id>')
+@api.route('/director/<director_id>')
 @api.route('/directors')
 class DirectorsAPI(Resource):
     @staticmethod
-    def get(id='all'):
-        if id == 'all':
+    def get(director_id='all'):
+        if director_id == 'all':
             all_directors = Directors.query.all()
             result = directors_schema.dump(all_directors)
             return jsonify(result)
-        director = Directors.query.filter_by(director_id=id)
+        director = Directors.query.filter_by(director_id=director_id)
         result = directors_schema.dump(director)
         return jsonify(result)
 
@@ -197,16 +196,18 @@ class DirectorsAPI(Resource):
         return 200
 
 
-@api.route('/film/<id>')
+@api.route('/film/<film_id>')
 @api.route('/films')
 class FilmsAPI(Resource):
     @staticmethod
-    def get(id='all'):
-        if id == 'all':
-            all_films = Films.query.all()
-            result = films_schema.dump(all_films)
-            return jsonify(result)
-        film = Films.query.filter_by(film_id=id)
+    def get(film_id='all'):
+        if film_id == 'all':
+            page = int(request.args.get('page')) if request.args.get('page')\
+                else 1
+            all_films = Films.query.paginate(page, 10, error_out=False)
+            result = films_schema.dump(all_films.items)
+            return jsonify({'page': page, 'content': result})
+        film = Films.query.filter_by(film_id=film_id)
         result = films_schema.dump(film)
         return jsonify(result)
 
@@ -267,6 +268,50 @@ class FilmsAPI(Resource):
         return 200
 
 
+@api.route('/query_films')
+class QueryFilms(Resource):
+    @staticmethod
+    def get():
+        page = int(request.args.get('page')) \
+            if request.args.get('page') \
+            else 1
+        films = Films.query
+
+        if not request.args.get('sorted'):
+            films = films.order_by(Films.film_title)
+        if request.args.get('sorted') == 'rating':
+            films = films.order_by(Films.rating)
+        if request.args.get('sorted') == 'release_date':
+            films = films.order_by(Films.release_date)
+
+        if request.args.get('genre_filter'):
+            tmp_films = FilmsGenres.query.with_entities(FilmsGenres.film_id).filter_by(
+                    genre_id=int(request.args.get('genre_filter'))).all()
+            films_id = []
+            for i in tmp_films:
+                films_id.append(int(i[0]))
+            films = films.filter(Films.film_id.in_(films_id))
+
+        if request.args.get('director_filter'):
+            tmp_films = FilmsDirectors.query.with_entities(FilmsDirectors.film_id).filter_by(
+                    director_id=int(request.args.get('director_filter'))).all()
+            films_id = []
+            for i in tmp_films:
+                films_id.append(int(i[0]))
+            films = films.filter(Films.film_id.in_(films_id))
+
+        if request.args.get('date_filter_min') and request.args.get('date_filter_max'):
+            films = films.filter(Films.release_date >= request.args.get('date_filter_min'))\
+                .filter(Films.release_date <= request.args.get('date_filter_max'))
+
+        if request.args.get('like'):
+            films = films.filter(Films.film_title.like(f'%{request.args.get("like")}%'))
+
+        films = films.paginate(page, 10, error_out=False)
+        result = films_schema.dump(films.items)
+        return jsonify({'page': page, 'content': result})
+
+
 @api.route('/films_directors')
 class FilmsDirectorsAPI(Resource):
     @staticmethod
@@ -275,7 +320,8 @@ class FilmsDirectorsAPI(Resource):
         all_fd = FilmsDirectors.query.join(Directors,
                                            Directors.director_id == FilmsDirectors.director_id) \
             .join(Films, Films.film_id == FilmsDirectors.film_id) \
-            .add_columns(Films.film_title, Directors.director_id, Directors.first_name, Directors.last_name)
+            .add_columns(Films.film_title, Directors.director_id,
+                         Directors.first_name, Directors.last_name)
         result = films_directors_schema.dump(all_fd)
         return jsonify(result)
 
