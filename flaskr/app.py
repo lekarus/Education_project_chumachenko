@@ -1,4 +1,6 @@
+import flask_login
 from flask import jsonify, request
+from flask_login import login_user, login_required, current_user, logout_user
 from flask_migrate import Migrate
 from flask_restx import Api, Resource
 
@@ -18,7 +20,10 @@ migrate = Migrate(app, db)
 @api.route('/users')
 class UsersAPI(Resource):
     @staticmethod
+    @login_required
     def get(id='all'):
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         if id == 'all':
             all_users = Users.query.all()
             result = users_schema.dump(all_users)
@@ -28,18 +33,24 @@ class UsersAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         user = Users.query.filter_by(username=request.args.get('username'))
         if users_schema.dump(user):
             return jsonify({'message': 'duplicate username'})
-        new_user = Users(username=request.args.get('username'), password=request.args.get('password'),
-                         isAdmin=bool(request.args.get('isAdmin')))
+        new_user = Users(request.args.get('username'), request.args.get('password'),
+                         bool(int(request.args.get('isAdmin'))))
         db.session.add(new_user)
         db.session.commit()
         return 200
 
     @staticmethod
+    @login_required
     def put():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         user = Users.query.\
             where(Users.user_id != request.args.get('user_id')).\
             where(Users.username == request.args.get('username'))
@@ -48,16 +59,18 @@ class UsersAPI(Resource):
         user = Users.query.where(Users.user_id == request.args.get('user_id'))
         if not users_schema.dump(user):
             return jsonify({'message': 'user not found'})
-        print(bool(request.args.get('isAdmin')))
         user.update({'username': request.args.get('username'),
                      'password': request.args.get('password'),
-                     'isAdmin': bool(request.args.get('isAdmin'))
+                     'isAdmin': bool(int(request.args.get('isAdmin')))
                      })
         db.session.commit()
         return 200
 
     @staticmethod
+    @login_required
     def delete():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         if int(request.args.get('user_id')) == 2:
             return jsonify({'message': 'you cant remove admin'})
         user = Users.query.where(Users.user_id == request.args.get('user_id'))
@@ -84,7 +97,10 @@ class GenreAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         if genres_schema.dump(Genres.query.filter_by(genre=request.args.get('genre'))):
             return jsonify({'message': 'genre already exists'})
         new_genre = Genres(genre=request.args.get('genre'))
@@ -93,7 +109,10 @@ class GenreAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def put():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         if genres_schema.dump(Genres.query.filter_by(genre=request.args.get('genre'))):
             return jsonify({'message': 'genre already exists'})
         genre = Genres.query.filter_by(genre_id=request.args.get('genre_id'))
@@ -102,7 +121,10 @@ class GenreAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def delete():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         genre = Genres.query.where(Genres.genre_id == request.args.get('genre_id'))
         if not genres_schema.dump(genre):
             return jsonify({'message': 'genre not found'})
@@ -128,7 +150,10 @@ class DirectorsAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.filter_by(first_name=request.args.get('first_name'),
                                              last_name=request.args.get('last_name'))
         if directors_schema.dump(director):
@@ -140,7 +165,10 @@ class DirectorsAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def put():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.filter_by(first_name=request.args.get('first_name'),
                                              last_name=request.args.get('last_name'))
         if genres_schema.dump(director):
@@ -154,7 +182,10 @@ class DirectorsAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def delete():
+        if not current_user.isAdmin:
+            return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.where(Directors.director_id == request.args.get('director_id'))
         if not directors_schema.dump(director):
             return jsonify({'message': 'director not found'})
@@ -180,6 +211,7 @@ class FilmsAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
         film = Films.query.filter_by(film_title=request.args.get('film_title'),
                                      release_date=request.args.get('release_date'))
@@ -188,45 +220,49 @@ class FilmsAPI(Resource):
         new_film = Films(film_title=request.args.get('film_title'),
                          release_date=request.args.get('release_date'),
                          film_desc=request.args.get('film_desc'),
-                         rating=int(request.args.get('rating')),
+                         rating=float(request.args.get('rating')),
                          poster=request.args.get('poster'),
-                         user_id=int(request.args.get('user_id')))
+                         user_id=current_user.user_id)
         db.session.add(new_film)
         db.session.commit()
         return 200
 
     @staticmethod
+    @login_required
     def put():
-        film = Films.query.filter_by(film_title=request.args.get('film_title'),
-                                     release_date=request.args.get('release_date'))
-        if films_schema.dump(film):
-            return jsonify({'message': 'film already exists'})
-        film = Films.query.filter_by(film_id=request.args.get('film_id'))
-        if not films_schema.dump(film):
+        film = Films.query.filter_by(film_id=int(request.args.get('film_id'))).first()
+        if not film:
             return jsonify({'message': 'film not found'})
-        film.update({
-            'film_title': request.args.get('film_title'),
-            'film_desc': request.args.get('film_desc'),
-            'release_date': request.args.get('release_date'),
-            'rating': int(request.args.get('rating')),
-            'poster': request.args.get('poster'),
-            'user_id': int(request.args.get('user_id'))
-        })
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
+        check_existing = Films.query.filter_by(film_title=request.args.get('film_title')).first()
+        if check_existing:
+            return jsonify({'message': 'film already exists'})
+        film.film_title = request.args.get('film_title')
+        film.film_desc = request.args.get('film_desc')
+        film.release_date = request.args.get('release_date')
+        film.rating = float(request.args.get('rating'))
+        film.poster = request.args.get('poster')
         db.session.commit()
         return 200
 
     @staticmethod
+    @login_required
     def delete():
-        film = Films.query.filter_by(film_id=request.args.get('film_id'))
-        if not films_schema.dump(film):
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not film:
             return jsonify({'message': 'film not found'})
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'))
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'))
         if films_genres_schema.dump(fg):
             fg.delete()
         if films_directors_schema.dump(fd):
             fd.delete()
-        film.delete()
+        db.session.delete(film)
         db.session.commit()
         return 200
 
@@ -234,6 +270,7 @@ class FilmsAPI(Resource):
 @api.route('/films_directors')
 class FilmsDirectorsAPI(Resource):
     @staticmethod
+    @login_required
     def get():
         all_fd = FilmsDirectors.query.join(Directors,
                                            Directors.director_id == FilmsDirectors.director_id) \
@@ -243,7 +280,12 @@ class FilmsDirectorsAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         new_fd = FilmsDirectors(film_id=request.args.get('film_id'),
                                 director_id=request.args.get('director_id'))
         db.session.add(new_fd)
@@ -251,7 +293,12 @@ class FilmsDirectorsAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def put():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'))
         if not films_directors_schema.dump(fd):
             return jsonify({'message': 'film not found'})
@@ -263,7 +310,12 @@ class FilmsDirectorsAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def delete():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'),
                                             director_id=request.args.get('director_id'))
         if not films_directors_schema.dump(fd):
@@ -276,6 +328,7 @@ class FilmsDirectorsAPI(Resource):
 @api.route('/films_genres')
 class FilmsGenresAPI(Resource):
     @staticmethod
+    @login_required
     def get():
         all_fg = FilmsGenres.query.join(Genres, Genres.genre_id == FilmsGenres.genre_id) \
             .join(Films, Films.film_id == FilmsGenres.film_id) \
@@ -284,7 +337,12 @@ class FilmsGenresAPI(Resource):
         return jsonify(result)
 
     @staticmethod
+    @login_required
     def post():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         new_fg = FilmsGenres(film_id=request.args.get('film_id'),
                              gerne_id=request.args.get('genre_id'))
         db.session.add(new_fg)
@@ -292,7 +350,12 @@ class FilmsGenresAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def put():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'))
         if not films_genres_schema.dump(fg):
             return jsonify({'message': 'film not found'})
@@ -304,13 +367,50 @@ class FilmsGenresAPI(Resource):
         return 200
 
     @staticmethod
+    @login_required
     def delete():
+        film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
+        if not current_user.isAdmin and \
+                current_user.user_id != int(film.user_id):
+            return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'),
                                          genre_id=request.args.get('genre_id'))
         if not films_genres_schema.dump(fg):
             return jsonify({'message': 'row not found'})
         fg.delete()
         db.session.commit()
+        return 200
+
+
+@api.route('/login')
+class Login(Resource):
+    @staticmethod
+    def post():
+        user = Users.query.filter_by(username=request.args.get('username'),
+                                     password=request.args.get('password')).first()
+        if user:
+            login_user(user)
+            return 200
+        return jsonify({'message': 'incorrect username or password'})
+
+
+@api.route('/register')
+class Register(Resource):
+    @staticmethod
+    def post():
+        new_user = Users(request.args.get('username'),
+                         request.args.get('password'), False)
+        db.session.add(new_user)
+        db.session.commit()
+        return 200
+
+
+@api.route('/register')
+class Logout(Resource):
+    @staticmethod
+    @login_required
+    def get():
+        logout_user()
         return 200
 
 
