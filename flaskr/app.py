@@ -3,7 +3,7 @@ from flask_login import login_user, login_required, current_user, logout_user
 from flask_migrate import Migrate
 from flask_restx import Api, Resource
 
-from database import app, db
+from database import app, db, logger
 from database.Directors import Directors, directors_schema
 from database.Films import Films, films_schema
 from database.Films_Directors import FilmsDirectors, films_directors_schema
@@ -22,6 +22,7 @@ class UsersAPI(Resource):
     @login_required
     def get(user_id='all'):
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to get from users')
             return jsonify({'message': 'you don\'t have access'})
         if user_id == 'all':
             all_users = Users.query.all()
@@ -35,6 +36,7 @@ class UsersAPI(Resource):
     @login_required
     def post():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to post into users')
             return jsonify({'message': 'you don\'t have access'})
         user = Users.query.filter_by(username=request.args.get('username'))
         if users_schema.dump(user):
@@ -43,12 +45,14 @@ class UsersAPI(Resource):
                          bool(int(request.args.get('isAdmin'))))
         db.session.add(new_user)
         db.session.commit()
+        logger.info(f'User {current_user.username} added a user {new_user.username}')
         return 200
 
     @staticmethod
     @login_required
     def put():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to put into users')
             return jsonify({'message': 'you don\'t have access'})
         user = Users.query.\
             where(Users.user_id != request.args.get('user_id')).\
@@ -58,17 +62,21 @@ class UsersAPI(Resource):
         user = Users.query.where(Users.user_id == request.args.get('user_id'))
         if not users_schema.dump(user):
             return jsonify({'message': 'user not found'})
+        old_user = Users.query.get(request.args.get('user_id')).first()
         user.update({'username': request.args.get('username'),
                      'password': request.args.get('password'),
                      'isAdmin': bool(int(request.args.get('isAdmin')))
                      })
         db.session.commit()
+        logger.info(f'User {current_user.username} updated a user {old_user.username}'
+                    f'to {user.username}')
         return 200
 
     @staticmethod
     @login_required
     def delete():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to delete into users')
             return jsonify({'message': 'you don\'t have access'})
         if int(request.args.get('user_id')) == 2:
             return jsonify({'message': 'you cant remove admin'})
@@ -79,6 +87,7 @@ class UsersAPI(Resource):
             return jsonify({'message': 'this user has movies, please delete them first'})
         user.delete()
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted a user {user.username}')
         return 200
 
 
@@ -99,30 +108,37 @@ class GenreAPI(Resource):
     @login_required
     def post():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to post into genres')
             return jsonify({'message': 'you don\'t have access'})
         if genres_schema.dump(Genres.query.filter_by(genre=request.args.get('genre'))):
             return jsonify({'message': 'genre already exists'})
         new_genre = Genres(genre=request.args.get('genre'))
         db.session.add(new_genre)
         db.session.commit()
+        logger.info(f'User {current_user.username} added genre {new_genre.genre}')
         return 200
 
     @staticmethod
     @login_required
     def put():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to put into genres')
             return jsonify({'message': 'you don\'t have access'})
         if genres_schema.dump(Genres.query.filter_by(genre=request.args.get('genre'))):
             return jsonify({'message': 'genre already exists'})
         genre = Genres.query.filter_by(genre_id=request.args.get('genre_id'))
+        old_genre = Genres.query.get(request.args.get("genre_id")).first()
         genre.update({'genre': request.args.get('genre')})
         db.session.commit()
+        logger.info(f'User {current_user.username} updated the genre {old_genre.genre}'
+                    f'to {genre.genre}')
         return 200
 
     @staticmethod
     @login_required
     def delete():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to delete into genres')
             return jsonify({'message': 'you don\'t have access'})
         genre = Genres.query.where(Genres.genre_id == request.args.get('genre_id'))
         if not genres_schema.dump(genre):
@@ -132,6 +148,7 @@ class GenreAPI(Resource):
             fg.delete()
         genre.delete()
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted the genre {genre.genre}')
         return 200
 
 
@@ -152,6 +169,7 @@ class DirectorsAPI(Resource):
     @login_required
     def post():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to post into directors')
             return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.filter_by(first_name=request.args.get('first_name'),
                                              last_name=request.args.get('last_name'))
@@ -161,12 +179,15 @@ class DirectorsAPI(Resource):
                                  last_name=request.args.get('last_name'))
         db.session.add(new_director)
         db.session.commit()
+        logger.info(f'User {current_user.username} added a director '
+                    f'{new_director.first_name} {new_director.last_name}')
         return 200
 
     @staticmethod
     @login_required
     def put():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to put into directors')
             return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.filter_by(first_name=request.args.get('first_name'),
                                              last_name=request.args.get('last_name'))
@@ -175,15 +196,20 @@ class DirectorsAPI(Resource):
         director = Directors.query.filter_by(director_id=request.args.get('director_id'))
         if not directors_schema.dump(director):
             return jsonify({'message': 'director not found'})
+        old_director = Directors.query.get(request.args.get('director_id')).first()
         director.update({'first_name': request.args.get('first_name'),
                          'last_name': request.args.get('last_name')})
         db.session.commit()
+        logger.info(f'User {current_user.username} updated a director '
+                    f'{old_director.first_name} {old_director.last_name} to'
+                    f'{request.args.get("first_name")} {request.args.get("last_name")}')
         return 200
 
     @staticmethod
     @login_required
     def delete():
         if not current_user.isAdmin:
+            logger.warning(f'User {current_user.username} tried to delete into directors')
             return jsonify({'message': 'you don\'t have access'})
         director = Directors.query.where(Directors.director_id == request.args.get('director_id'))
         if not directors_schema.dump(director):
@@ -193,6 +219,8 @@ class DirectorsAPI(Resource):
             fd.delete()
         director.delete()
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted a director '
+                    f'{director.first_name} {director.last_name}')
         return 200
 
 
@@ -226,6 +254,7 @@ class FilmsAPI(Resource):
                          user_id=current_user.user_id)
         db.session.add(new_film)
         db.session.commit()
+        logger.info(f'User {current_user.username} added film {new_film.film_title}')
         return 200
 
     @staticmethod
@@ -236,16 +265,20 @@ class FilmsAPI(Resource):
             return jsonify({'message': 'film not found'})
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to put into films')
             return jsonify({'message': 'you don\'t have access'})
         check_existing = Films.query.filter_by(film_title=request.args.get('film_title')).first()
         if check_existing:
             return jsonify({'message': 'film already exists'})
+        old_film = Films.query.get(request.args.get('film_id')).first()
         film.film_title = request.args.get('film_title')
         film.film_desc = request.args.get('film_desc')
         film.release_date = request.args.get('release_date')
         film.rating = float(request.args.get('rating'))
         film.poster = request.args.get('poster')
         db.session.commit()
+        logger.info(f'User {current_user.username} updated the film'
+                    f'{old_film.film_title} to {film.film_title}')
         return 200
 
     @staticmethod
@@ -256,6 +289,7 @@ class FilmsAPI(Resource):
             return jsonify({'message': 'film not found'})
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to delete into films')
             return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'))
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'))
@@ -265,6 +299,7 @@ class FilmsAPI(Resource):
             fd.delete()
         db.session.delete(film)
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted the film {film.film_title}')
         return 200
 
 
@@ -331,11 +366,14 @@ class FilmsDirectorsAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to post into film_directors')
             return jsonify({'message': 'you don\'t have access'})
         new_fd = FilmsDirectors(film_id=request.args.get('film_id'),
                                 director_id=request.args.get('director_id'))
         db.session.add(new_fd)
         db.session.commit()
+        logger.info(f'User {current_user.username} added row into film_directors'
+                    f'{new_fd.director_id} {new_fd.film_id}')
         return 200
 
     @staticmethod
@@ -344,15 +382,21 @@ class FilmsDirectorsAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to put into film_directors')
             return jsonify({'message': 'you don\'t have access'})
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'))
         if not films_directors_schema.dump(fd):
             return jsonify({'message': 'film not found'})
+        old_director = fd.director_id
+        old_film = fd.film_id
         fd.update({
             'film_id': request.args.get('film_id'),
             'director_id': request.args.get('director_id')
         })
         db.session.commit()
+        logger.info(f'User {current_user.username} updated a row in the '
+                    f'film_directors {old_director} {old_film} to'
+                    f'{fd.director_id} {fd.film_id}')
         return 200
 
     @staticmethod
@@ -361,6 +405,7 @@ class FilmsDirectorsAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to delete into film_directors')
             return jsonify({'message': 'you don\'t have access'})
         fd = FilmsDirectors.query.filter_by(film_id=request.args.get('film_id'),
                                             director_id=request.args.get('director_id'))
@@ -368,6 +413,8 @@ class FilmsDirectorsAPI(Resource):
             return jsonify({'message': 'row not found'})
         fd.delete()
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted a row from '
+                    f'film_directors {fd.director_id} {fd.film_id}')
         return 200
 
 
@@ -388,11 +435,14 @@ class FilmsGenresAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to post into film_genres')
             return jsonify({'message': 'you don\'t have access'})
         new_fg = FilmsGenres(film_id=request.args.get('film_id'),
                              gerne_id=request.args.get('genre_id'))
         db.session.add(new_fg)
         db.session.commit()
+        logger.info(f'User {current_user.username} added row into film_genres'
+                    f'{new_fg.director_id} {new_fg.film_id}')
         return 200
 
     @staticmethod
@@ -401,15 +451,21 @@ class FilmsGenresAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to put into film_genres')
             return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'))
         if not films_genres_schema.dump(fg):
             return jsonify({'message': 'film not found'})
+        old_genre = request.args.get("genre_id")
+        old_film = request.args.get("film_id")
         fg.update({
             'film_id': request.args.get('film_id'),
             'genre_id': request.args.get('genre_id')
         })
         db.session.commit()
+        logger.info(f'User {current_user.username} updated a row in the '
+                    f'film_genres {old_genre} {old_film} to'
+                    f'{fg.genre_id} {fg.film_id}')
         return 200
 
     @staticmethod
@@ -418,6 +474,7 @@ class FilmsGenresAPI(Resource):
         film = Films.query.filter_by(film_id=request.args.get('film_id')).first()
         if not current_user.isAdmin and \
                 current_user.user_id != int(film.user_id):
+            logger.warning(f'User {current_user.username} tried to delete into film_genres')
             return jsonify({'message': 'you don\'t have access'})
         fg = FilmsGenres.query.filter_by(film_id=request.args.get('film_id'),
                                          genre_id=request.args.get('genre_id'))
@@ -425,6 +482,8 @@ class FilmsGenresAPI(Resource):
             return jsonify({'message': 'row not found'})
         fg.delete()
         db.session.commit()
+        logger.info(f'User {current_user.username} deleted a row from '
+                    f'film_genres {fg.genre_id} {fg.film_id}')
         return 200
 
 
@@ -436,6 +495,7 @@ class Login(Resource):
                                      password=request.args.get('password')).first()
         if user:
             login_user(user)
+            logger.info(f'User {current_user.username} successfully logged in')
             return 200
         return jsonify({'message': 'incorrect username or password'})
 
@@ -448,6 +508,7 @@ class Register(Resource):
                          request.args.get('password'), False)
         db.session.add(new_user)
         db.session.commit()
+        logger.info(f'User {current_user.username} successfully signed up')
         return 200
 
 
@@ -457,6 +518,7 @@ class Logout(Resource):
     @login_required
     def get():
         logout_user()
+        logger.info(f'User {current_user.username} successfully logged out')
         return 200
 
 
