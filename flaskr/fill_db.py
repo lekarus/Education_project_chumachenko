@@ -1,9 +1,10 @@
+from flask_script import Manager
+
 from app import db, app
 from database.Directors import Directors
 from database.Films import Films
 from database.Users import Users
 from database.Genres import Genres
-from flask_script import Manager
 from database.Films_Directors import FilmsDirectors
 from database.Films_Genres import FilmsGenres
 

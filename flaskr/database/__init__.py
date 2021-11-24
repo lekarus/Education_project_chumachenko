@@ -23,3 +23,5 @@ manager = LoginManager(app)
 
 config.fileConfig(fname='logs/logger.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
