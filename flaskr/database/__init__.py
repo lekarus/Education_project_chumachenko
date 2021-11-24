@@ -1,3 +1,6 @@
+import logging
+from logging import config
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -16,3 +19,6 @@ db.init_app(app)
 ma = Marshmallow(app)
 
 manager = LoginManager(app)
+
+config.fileConfig(fname='logs/logger.conf', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
