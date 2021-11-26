@@ -1,0 +1,47 @@
+version: "3.3"
+
+services:
+  web:
+      build: .
+      depends_on:
+        - db
+      restart: always
+      expose:
+        - 8000
+
+  nginx:
+    build: nginx
+    depends_on:
+      - web
+    ports:
+      - 80:80
+    restart: always
+
+  db:
+      image: postgres:14.0
+      restart: always
+      env_file:
+        - envs/.env
+      volumes:
+          - db-data:/var/lib/postgresql/data
+      ports:
+          - "5432:5432"
+
+  test_db:
+      image: postgres:14.0
+      restart: always
+      environment:
+        POSTGRES_USER: test
+        POSTGRES_PASSWORD: password
+        PGDATA: /var/lib/postgresql/data
+      volumes:
+        - test-db-data:/var/lib/postgresql/data
+      expose:
+        - 49153
+      ports:
+        - 49153:49153
+      command: -p 49153
+
+volumes:
+  db-data:
+  test-db-data:
